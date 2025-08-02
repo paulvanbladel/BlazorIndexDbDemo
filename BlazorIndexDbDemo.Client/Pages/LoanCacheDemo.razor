@@ -1,5 +1,6 @@
 @page "/loans-cache"
 @using BlazorIndexDbDemo.Client.Data
+@using System.Text.Json
 @inject IJSRuntime JSRuntime
 @inject HttpClient Http
 
@@ -327,16 +328,20 @@ else if (loans is not null)
 
         try
         {
-            var response = await Http.GetFromJsonAsync<dynamic>("api/loanconfig/version");
+            var response = await Http.GetFromJsonAsync<JsonElement>("api/loanconfig/version");
             var cachedVersion = await JSRuntime.InvokeAsync<string>("loanCacheDB.getCachedVersion");
             
-            if (response != null)
+            if (response.ValueKind != JsonValueKind.Undefined && response.TryGetProperty("version", out var versionProperty))
             {
-                var serverVersion = response.GetProperty("version").GetString();
-                var isMatch = serverVersion == cachedVersion;
+                var serverVersion = versionProperty.GetString();
+                var isMatch = !string.IsNullOrEmpty(serverVersion) && !string.IsNullOrEmpty(cachedVersion) && serverVersion == cachedVersion;
                 
                 statusMessage = $"📋 Server version: {serverVersion}";
                 cacheInfo = $"Cached version: {cachedVersion ?? "None"} - {(isMatch ? "✅ Match" : "❌ Mismatch")}";
+            }
+            else
+            {
+                errorMessage = "Invalid response from server";
             }
         }
         catch (Exception ex)
