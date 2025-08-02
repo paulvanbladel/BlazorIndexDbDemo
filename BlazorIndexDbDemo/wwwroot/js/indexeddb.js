@@ -1,8 +1,9 @@
-// IndexedDB operations for Loan Cache Demo
+// IndexedDB operations for Loan Cache Demo with version-based cache invalidation
 window.loanCacheDB = {
     dbName: 'LoanDatabase',
-    version: 1,
-    storeName: 'Loans',
+    version: 2,
+    loansStoreName: 'Loans',
+    metadataStoreName: 'Metadata',
     
     // Initialize the database
     initDB: function() {
@@ -19,39 +20,138 @@ window.loanCacheDB = {
             
             request.onupgradeneeded = (event) => {
                 const db = event.target.result;
-                if (!db.objectStoreNames.contains(this.storeName)) {
-                    const store = db.createObjectStore(this.storeName, { keyPath: 'id', autoIncrement: true });
-                    store.createIndex('name', 'name', { unique: false });
+                
+                // Create or recreate loans store
+                if (db.objectStoreNames.contains(this.loansStoreName)) {
+                    db.deleteObjectStore(this.loansStoreName);
                 }
+                const loansStore = db.createObjectStore(this.loansStoreName, { keyPath: 'id', autoIncrement: true });
+                loansStore.createIndex('name', 'name', { unique: false });
+                
+                // Create metadata store for version information
+                if (db.objectStoreNames.contains(this.metadataStoreName)) {
+                    db.deleteObjectStore(this.metadataStoreName);
+                }
+                const metadataStore = db.createObjectStore(this.metadataStoreName, { keyPath: 'key' });
             };
         });
     },
     
-    // Clear all loans
+    // Clear all loans and metadata
     clearLoans: async function() {
         const db = await this.initDB();
         return new Promise((resolve, reject) => {
-            const transaction = db.transaction([this.storeName], 'readwrite');
-            const store = transaction.objectStore(this.storeName);
-            const request = store.clear();
+            const transaction = db.transaction([this.loansStoreName, this.metadataStoreName], 'readwrite');
+            const loansStore = transaction.objectStore(this.loansStoreName);
+            const metadataStore = transaction.objectStore(this.metadataStoreName);
             
-            request.onsuccess = () => {
+            const clearLoans = loansStore.clear();
+            const clearMetadata = metadataStore.clear();
+            
+            transaction.oncomplete = () => {
                 resolve();
             };
             
-            request.onerror = () => {
-                reject(new Error('Failed to clear loans'));
+            transaction.onerror = () => {
+                reject(new Error('Failed to clear data'));
             };
         });
     },
     
-    // Add multiple loans
+    // Store loan envelope (data + metadata)
+    storeLoanEnvelope: async function(envelope) {
+        const db = await this.initDB();
+        return new Promise((resolve, reject) => {
+            const transaction = db.transaction([this.loansStoreName, this.metadataStoreName], 'readwrite');
+            const loansStore = transaction.objectStore(this.loansStoreName);
+            const metadataStore = transaction.objectStore(this.metadataStoreName);
+            
+            // Clear existing data
+            loansStore.clear();
+            metadataStore.clear();
+            
+            // Store metadata
+            metadataStore.add({
+                key: 'version',
+                value: envelope.version,
+                timestamp: envelope.timestamp
+            });
+            
+            // Store loans
+            envelope.data.forEach(loan => {
+                loansStore.add(loan);
+            });
+            
+            transaction.oncomplete = () => {
+                resolve();
+            };
+            
+            transaction.onerror = () => {
+                reject(new Error('Failed to store loan envelope'));
+            };
+        });
+    },
+    
+    // Get cached version
+    getCachedVersion: async function() {
+        const db = await this.initDB();
+        return new Promise((resolve, reject) => {
+            const transaction = db.transaction([this.metadataStoreName], 'readonly');
+            const store = transaction.objectStore(this.metadataStoreName);
+            const request = store.get('version');
+            
+            request.onsuccess = () => {
+                resolve(request.result?.value || null);
+            };
+            
+            request.onerror = () => {
+                reject(new Error('Failed to get cached version'));
+            };
+        });
+    },
+    
+    // Get cached metadata
+    getCachedMetadata: async function() {
+        const db = await this.initDB();
+        return new Promise((resolve, reject) => {
+            const transaction = db.transaction([this.metadataStoreName], 'readonly');
+            const store = transaction.objectStore(this.metadataStoreName);
+            const request = store.get('version');
+            
+            request.onsuccess = () => {
+                resolve(request.result || null);
+            };
+            
+            request.onerror = () => {
+                reject(new Error('Failed to get cached metadata'));
+            };
+        });
+    },
+    
+    // Get all loans (legacy method for compatibility)
+    getAllLoans: async function() {
+        const db = await this.initDB();
+        return new Promise((resolve, reject) => {
+            const transaction = db.transaction([this.loansStoreName], 'readonly');
+            const store = transaction.objectStore(this.loansStoreName);
+            const request = store.getAll();
+            
+            request.onsuccess = () => {
+                resolve(request.result);
+            };
+            
+            request.onerror = () => {
+                reject(new Error('Failed to get loans'));
+            };
+        });
+    },
+    
+    // Add multiple loans (legacy method for compatibility)
     addLoans: async function(loans) {
         const db = await this.initDB();
         return new Promise((resolve, reject) => {
-            const transaction = db.transaction([this.storeName], 'readwrite');
-            const store = transaction.objectStore(this.storeName);
-            let completed = 0;
+            const transaction = db.transaction([this.loansStoreName], 'readwrite');
+            const store = transaction.objectStore(this.loansStoreName);
             
             transaction.oncomplete = () => {
                 resolve();
@@ -64,24 +164,6 @@ window.loanCacheDB = {
             loans.forEach(loan => {
                 store.add(loan);
             });
-        });
-    },
-    
-    // Get all loans
-    getAllLoans: async function() {
-        const db = await this.initDB();
-        return new Promise((resolve, reject) => {
-            const transaction = db.transaction([this.storeName], 'readonly');
-            const store = transaction.objectStore(this.storeName);
-            const request = store.getAll();
-            
-            request.onsuccess = () => {
-                resolve(request.result);
-            };
-            
-            request.onerror = () => {
-                reject(new Error('Failed to get loans'));
-            };
         });
     }
 };

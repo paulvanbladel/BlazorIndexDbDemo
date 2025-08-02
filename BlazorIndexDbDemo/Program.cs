@@ -1,5 +1,6 @@
 using BlazorIndexDbDemo.Client.Pages;
 using BlazorIndexDbDemo.Components;
+using BlazorIndexDbDemo.Services;
 using Microsoft.AspNetCore.Http.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -14,6 +15,9 @@ builder.Services.AddControllers();
 // Add HttpClient for client-side components  
 builder.Services.AddHttpClient();
 builder.Services.AddHttpContextAccessor();
+
+// Register LoanHashService as singleton
+builder.Services.AddSingleton<ILoanHashService, LoanHashService>();
 
 var app = builder.Build();
 
