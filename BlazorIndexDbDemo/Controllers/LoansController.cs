@@ -1,22 +1,26 @@
 using Microsoft.AspNetCore.Mvc;
+using BlazorIndexDbDemo.Models;
+using BlazorIndexDbDemo.Services;
 
 namespace BlazorIndexDbDemo.Controllers;
-
-public class Loan
-{
-    public int Id { get; set; }
-    public string Name { get; set; } = default!;
-    public decimal Amount { get; set; }
-    public decimal InterestRate { get; set; }
-}
 
 [ApiController]
 [Route("api/[controller]")]
 public class LoansController : ControllerBase
 {
-    [HttpGet]
-    public IActionResult GetLoans()
+    private readonly ILoanHashService _loanHashService;
+
+    public LoansController(ILoanHashService loanHashService)
     {
+        _loanHashService = loanHashService;
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetLoans()
+    {
+        // Add configurable delay to demonstrate cache performance benefits
+        await Task.Delay(2000);
+
         var loans = Enumerable.Range(1, 10_000).Select(i => new Loan
         {
             Id = i,
@@ -25,6 +29,26 @@ public class LoansController : ControllerBase
             InterestRate = (decimal)Random.Shared.NextDouble() * 5 + 1
         });
 
-        return Ok(loans);
+        var envelope = new LoanEnvelope
+        {
+            Version = _loanHashService.GetCurrentVersion(),
+            Data = loans,
+            Timestamp = DateTime.UtcNow
+        };
+
+        return Ok(envelope);
+    }
+
+    [HttpGet("validate")]
+    public IActionResult ValidateCache([FromQuery] string version)
+    {
+        var currentVersion = _loanHashService.GetCurrentVersion();
+        var isValid = version == currentVersion;
+        
+        return Ok(new { 
+            IsValid = isValid, 
+            CurrentVersion = currentVersion,
+            ProvidedVersion = version
+        });
     }
 }
