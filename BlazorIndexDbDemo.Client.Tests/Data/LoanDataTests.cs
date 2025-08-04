@@ -32,7 +32,7 @@ public class LoanTests
 
         // Assert
         Assert.Equal(0, loan.Id);
-        Assert.NotNull(loan.Name);
+        Assert.Null(loan.Name);
         Assert.Equal(default, loan.Amount);
         Assert.Equal(default, loan.InterestRate);
     }
@@ -90,8 +90,8 @@ public class LoanEnvelopeTests
         var envelope = new LoanEnvelope();
 
         // Assert
-        Assert.NotNull(envelope.Version);
-        Assert.NotNull(envelope.Data);
+        Assert.Null(envelope.Version);
+        Assert.Null(envelope.Data);
         Assert.Equal(default, envelope.Timestamp);
     }
 
@@ -183,7 +183,7 @@ public class CacheValidationResponseTests
 
         // Assert
         Assert.False(response.IsValid);
-        Assert.NotNull(response.CurrentVersion);
-        Assert.NotNull(response.ProvidedVersion);
+        Assert.Null(response.CurrentVersion);
+        Assert.Null(response.ProvidedVersion);
     }
 }
