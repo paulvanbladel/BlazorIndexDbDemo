@@ -20,8 +20,7 @@ builder.Services.AddHttpContextAccessor();
 // Register LoanHashService as singleton
 builder.Services.AddSingleton<ILoanHashService, LoanHashService>();
 
-// Register server-side stub for LoanCacheService (used during prerendering)
-builder.Services.AddScoped<ILoanCacheService, ServerLoanCacheService>();
+
 
 var app = builder.Build();
 
