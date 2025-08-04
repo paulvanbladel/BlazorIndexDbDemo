@@ -50,3 +50,6 @@ app.MapRazorComponents<App>()
     .AddAdditionalAssemblies(typeof(BlazorIndexDbDemo.Client._Imports).Assembly);
 
 app.Run();
+
+// Make Program class accessible for integration testing
+public partial class Program { }
