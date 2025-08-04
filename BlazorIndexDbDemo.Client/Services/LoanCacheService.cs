@@ -1,74 +1,81 @@
-using TG.Blazor.IndexedDB;
+using Microsoft.JSInterop;
 using BlazorIndexDbDemo.Client.Data;
 
 namespace BlazorIndexDbDemo.Client.Services;
 
 public class LoanCacheService : ILoanCacheService
 {
-    private readonly IndexedDBManager _indexedDBManager;
-    private const string LoansStoreName = "Loans";
-    private const string MetadataStoreName = "Metadata";
+    private readonly IJSRuntime _jsRuntime;
 
-    public LoanCacheService(IndexedDBManager indexedDBManager)
+    public LoanCacheService(IJSRuntime jsRuntime)
     {
-        _indexedDBManager = indexedDBManager;
+        _jsRuntime = jsRuntime;
     }
 
     public async Task ClearLoansAsync()
     {
-        await _indexedDBManager.ClearStore(LoansStoreName);
-        await _indexedDBManager.ClearStore(MetadataStoreName);
+        try
+        {
+            await _jsRuntime.InvokeVoidAsync("loanCacheDB.clearLoans");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error clearing cache: {ex.Message}");
+            throw;
+        }
     }
 
     public async Task StoreLoanEnvelopeAsync(LoanEnvelope envelope)
     {
-        // Clear existing data
-        await _indexedDBManager.ClearStore(LoansStoreName);
-        await _indexedDBManager.ClearStore(MetadataStoreName);
-
-        // Store metadata
-        var metadata = new { key = "version", value = envelope.Version, timestamp = envelope.Timestamp };
-        var metadataRecord = new StoreRecord<object>
+        try
         {
-            Storename = MetadataStoreName,
-            Data = metadata
-        };
-        await _indexedDBManager.AddRecord(metadataRecord);
-
-        // Store loans
-        foreach (var loan in envelope.Data)
+            await _jsRuntime.InvokeVoidAsync("loanCacheDB.storeLoanEnvelope", envelope);
+        }
+        catch (Exception ex)
         {
-            var loanRecord = new StoreRecord<Loan>
-            {
-                Storename = LoansStoreName,
-                Data = loan
-            };
-            await _indexedDBManager.AddRecord(loanRecord);
+            Console.WriteLine($"Error storing loan envelope: {ex.Message}");
+            throw;
         }
     }
 
     public async Task<string?> GetCachedVersionAsync()
     {
-        var metadata = await _indexedDBManager.GetRecordById<string, object>(MetadataStoreName, "version");
-        
-        if (metadata != null)
+        try
         {
-            var metadataType = metadata.GetType();
-            var valueProperty = metadataType.GetProperty("value");
-            return valueProperty?.GetValue(metadata)?.ToString();
+            return await _jsRuntime.InvokeAsync<string>("loanCacheDB.getCachedVersion");
         }
-        
-        return null;
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error getting cached version: {ex.Message}");
+            return null;
+        }
     }
 
     public async Task<List<Loan>> GetAllLoansAsync()
     {
-        var loans = await _indexedDBManager.GetRecords<Loan>(LoansStoreName);
-        return loans?.ToList() ?? new List<Loan>();
+        try
+        {
+            var loans = await _jsRuntime.InvokeAsync<Loan[]>("loanCacheDB.getAllLoans");
+            Console.WriteLine($"Retrieved {loans?.Length ?? 0} loans from cache");
+            return loans?.ToList() ?? new List<Loan>();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error getting cached loans: {ex.Message}");
+            return new List<Loan>();
+        }
     }
 
     public async Task<object?> GetCachedMetadataAsync()
     {
-        return await _indexedDBManager.GetRecordById<string, object>(MetadataStoreName, "version");
+        try
+        {
+            return await _jsRuntime.InvokeAsync<object>("loanCacheDB.getCachedMetadata");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error getting cached metadata: {ex.Message}");
+            return null;
+        }
     }
 }
