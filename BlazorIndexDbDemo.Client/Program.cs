@@ -29,6 +29,6 @@ builder.Services.AddIndexedDB(dbStore =>
     });
 });
 
-builder.Services.AddScoped<LoanCacheService>();
+builder.Services.AddScoped<ILoanCacheService, LoanCacheService>();
 
 await builder.Build().RunAsync();

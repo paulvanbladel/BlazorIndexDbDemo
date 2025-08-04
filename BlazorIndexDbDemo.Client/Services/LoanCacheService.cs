@@ -3,7 +3,7 @@ using BlazorIndexDbDemo.Client.Data;
 
 namespace BlazorIndexDbDemo.Client.Services;
 
-public class LoanCacheService
+public class LoanCacheService : ILoanCacheService
 {
     private readonly IndexedDBManager _indexedDBManager;
     private const string LoansStoreName = "Loans";

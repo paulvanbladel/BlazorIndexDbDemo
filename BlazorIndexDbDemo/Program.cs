@@ -1,6 +1,7 @@
 using BlazorIndexDbDemo.Client.Pages;
 using BlazorIndexDbDemo.Components;
 using BlazorIndexDbDemo.Services;
+using BlazorIndexDbDemo.Client.Services;
 using Microsoft.AspNetCore.Http.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -18,6 +19,9 @@ builder.Services.AddHttpContextAccessor();
 
 // Register LoanHashService as singleton
 builder.Services.AddSingleton<ILoanHashService, LoanHashService>();
+
+// Register server-side stub for LoanCacheService (used during prerendering)
+builder.Services.AddScoped<ILoanCacheService, ServerLoanCacheService>();
 
 var app = builder.Build();
 
