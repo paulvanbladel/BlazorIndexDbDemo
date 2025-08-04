@@ -20,8 +20,7 @@ builder.Services.AddHttpContextAccessor();
 // Register LoanHashService as singleton
 builder.Services.AddSingleton<ILoanHashService, LoanHashService>();
 
-// Register server-side stub for LoanCacheService (used during prerendering)
-builder.Services.AddScoped<ILoanCacheService, ServerLoanCacheService>();
+
 
 var app = builder.Build();
 
@@ -50,3 +49,6 @@ app.MapRazorComponents<App>()
     .AddAdditionalAssemblies(typeof(BlazorIndexDbDemo.Client._Imports).Assembly);
 
 app.Run();
+
+// Make Program class accessible for integration testing
+public partial class Program { }
