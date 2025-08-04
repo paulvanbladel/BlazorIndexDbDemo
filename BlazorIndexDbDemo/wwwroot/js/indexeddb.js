@@ -92,6 +92,24 @@ window.loanCacheDB = {
         });
     },
     
+    // Get all loans
+    getAllLoans: async function() {
+        const db = await this.initDB();
+        return new Promise((resolve, reject) => {
+            const transaction = db.transaction([this.loansStoreName], 'readonly');
+            const store = transaction.objectStore(this.loansStoreName);
+            const request = store.getAll();
+            
+            request.onsuccess = () => {
+                resolve(request.result || []);
+            };
+            
+            request.onerror = () => {
+                reject(new Error('Failed to get all loans'));
+            };
+        });
+    },
+    
     // Get cached version
     getCachedVersion: async function() {
         const db = await this.initDB();
@@ -125,45 +143,6 @@ window.loanCacheDB = {
             request.onerror = () => {
                 reject(new Error('Failed to get cached metadata'));
             };
-        });
-    },
-    
-    // Get all loans (legacy method for compatibility)
-    getAllLoans: async function() {
-        const db = await this.initDB();
-        return new Promise((resolve, reject) => {
-            const transaction = db.transaction([this.loansStoreName], 'readonly');
-            const store = transaction.objectStore(this.loansStoreName);
-            const request = store.getAll();
-            
-            request.onsuccess = () => {
-                resolve(request.result);
-            };
-            
-            request.onerror = () => {
-                reject(new Error('Failed to get loans'));
-            };
-        });
-    },
-    
-    // Add multiple loans (legacy method for compatibility)
-    addLoans: async function(loans) {
-        const db = await this.initDB();
-        return new Promise((resolve, reject) => {
-            const transaction = db.transaction([this.loansStoreName], 'readwrite');
-            const store = transaction.objectStore(this.loansStoreName);
-            
-            transaction.oncomplete = () => {
-                resolve();
-            };
-            
-            transaction.onerror = () => {
-                reject(new Error('Failed to add loans'));
-            };
-            
-            loans.forEach(loan => {
-                store.add(loan);
-            });
         });
     }
 };

@@ -1,7 +1,8 @@
 @page "/loans-cache"
 @using BlazorIndexDbDemo.Client.Data
+@using BlazorIndexDbDemo.Client.Services
 @using System.Text.Json
-@inject IJSRuntime JSRuntime
+@inject ILoanCacheService CacheService
 @inject HttpClient Http
 
 <PageTitle>Loan Cache Demo</PageTitle>
@@ -136,8 +137,8 @@ else if (loans is not null)
             {
                 loans = envelope.Data.ToList();
                 
-                // Store the envelope in IndexedDB
-                await JSRuntime.InvokeVoidAsync("loanCacheDB.storeLoanEnvelope", envelope);
+                // Store the envelope in IndexedDB using the new service
+                await CacheService.StoreLoanEnvelopeAsync(envelope);
                 
                 lastDataSource = "🌐 API Server";
                 statusMessage = $"Successfully loaded and cached {loans.Count} loans from API. Version: {envelope.Version}";
@@ -169,7 +170,7 @@ else if (loans is not null)
         try
         {
             // First, check if we have cached data
-            var cachedVersion = await JSRuntime.InvokeAsync<string>("loanCacheDB.getCachedVersion");
+            var cachedVersion = await CacheService.GetCachedVersionAsync();
             
             if (string.IsNullOrEmpty(cachedVersion))
             {
@@ -186,10 +187,9 @@ else if (loans is not null)
             if (validation?.IsValid == true)
             {
                 // Cache is valid, use cached data
-                var cachedLoans = await JSRuntime.InvokeAsync<Loan[]>("loanCacheDB.getAllLoans");
-                loans = cachedLoans?.ToList() ?? new List<Loan>();
+                loans = await CacheService.GetAllLoansAsync();
                 
-                var metadata = await JSRuntime.InvokeAsync<dynamic>("loanCacheDB.getCachedMetadata");
+                var metadata = await CacheService.GetCachedMetadataAsync();
                 
                 lastDataSource = "💾 IndexedDB Cache (validated)";
                 statusMessage = $"✅ Cache is valid! Loaded {loans.Count} loans from cache.";
@@ -228,10 +228,9 @@ else if (loans is not null)
 
         try
         {
-            var cachedLoans = await JSRuntime.InvokeAsync<Loan[]>("loanCacheDB.getAllLoans");
-            loans = cachedLoans?.ToList() ?? new List<Loan>();
+            loans = await CacheService.GetAllLoansAsync();
             
-            var cachedVersion = await JSRuntime.InvokeAsync<string>("loanCacheDB.getCachedVersion");
+            var cachedVersion = await CacheService.GetCachedVersionAsync();
             
             lastDataSource = "💾 IndexedDB Cache (forced)";
             statusMessage = $"Loaded {loans.Count} loans from IndexedDB cache.";
@@ -265,7 +264,7 @@ else if (loans is not null)
 
         try
         {
-            await JSRuntime.InvokeVoidAsync("loanCacheDB.clearLoans");
+            await CacheService.ClearLoansAsync();
             loans = null;
             lastDataSource = "";
             statusMessage = "Successfully cleared IndexedDB cache.";
@@ -329,7 +328,7 @@ else if (loans is not null)
         try
         {
             var response = await Http.GetFromJsonAsync<JsonElement>("api/loanconfig/version");
-            var cachedVersion = await JSRuntime.InvokeAsync<string>("loanCacheDB.getCachedVersion");
+            var cachedVersion = await CacheService.GetCachedVersionAsync();
             
             if (response.ValueKind != JsonValueKind.Undefined && response.TryGetProperty("version", out var versionProperty))
             {
